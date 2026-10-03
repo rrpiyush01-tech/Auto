@@ -5,33 +5,39 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
+      - name: Setup Android
+        uses: android-actions/setup-android@v4
+
+      - name: Install SDK
         run: |
-          yes | sdkmanager --licenses || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Find ZIP
+      - name: Extract ZIP
         run: |
           mkdir project
           unzip -q *.zip -d project
-          find project -maxdepth 3 -type f | head -50
+
+      - name: Find Gradle
+        run: |
+          find project -name gradlew -type f
 
       - name: Build APK
         run: |
-          chmod +x $(find project -name gradlew | head -1)
-          cd $(dirname $(find project -name gradlew | head -1))
+          GRADLE=$(find project -name gradlew -type f | head -1)
+          chmod +x "$GRADLE"
+          cd "$(dirname "$GRADLE")"
           ./gradlew assembleDebug
 
       - name: Upload APK
