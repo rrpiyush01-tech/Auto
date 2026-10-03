@@ -4,33 +4,41 @@ on:
   workflow_dispatch:
 
 jobs:
-  inspect:
+  build:
     runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: List repository
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK
         run: |
-          echo "=== REPOSITORY ==="
-          find . -maxdepth 4 -type f | sort
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Extract ZIP
         run: |
           mkdir -p project
           ZIP=$(find . -maxdepth 2 -type f -iname "*.zip" | head -1)
-          echo "ZIP: $ZIP"
-          if [ -z "$ZIP" ]; then
-            echo "ERROR: ZIP file not found"
-            exit 1
-          fi
           unzip -q "$ZIP" -d project
 
-      - name: Inspect extracted project
+      - name: Build APK
+        working-directory: project/XDMHelper_Mevada
         run: |
-          echo "=== EXTRACTED FILES ==="
-          find project -type f | sort | head -200
+          gradle wrapper --gradle-version 8.7
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-          echo "=== GRADLE FILES ==="
-          find project -type f \( -name "gradlew" -o -name "build.gradle" -o -name "build.gradle.kts" -o -name "settings.gradle" -o -name "settings.gradle.kts" \) -print
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: XDMHelper-APK
+          path: project/XDMHelper_Mevada/app/build/outputs/apk/debug/*.apk
