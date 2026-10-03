@@ -4,44 +4,33 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  inspect:
     runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Setup Android
-        uses: android-actions/setup-android@v4
-
-      - name: Install SDK
+      - name: List repository
         run: |
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "=== REPOSITORY ==="
+          find . -maxdepth 4 -type f | sort
 
       - name: Extract ZIP
         run: |
-          mkdir project
-          unzip -q *.zip -d project
+          mkdir -p project
+          ZIP=$(find . -maxdepth 2 -type f -iname "*.zip" | head -1)
+          echo "ZIP: $ZIP"
+          if [ -z "$ZIP" ]; then
+            echo "ERROR: ZIP file not found"
+            exit 1
+          fi
+          unzip -q "$ZIP" -d project
 
-      - name: Find Gradle
+      - name: Inspect extracted project
         run: |
-          find project -name gradlew -type f
+          echo "=== EXTRACTED FILES ==="
+          find project -type f | sort | head -200
 
-      - name: Build APK
-        run: |
-          GRADLE=$(find project -name gradlew -type f | head -1)
-          chmod +x "$GRADLE"
-          cd "$(dirname "$GRADLE")"
-          ./gradlew assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: APK
-          path: project/**/build/outputs/apk/**/*.apk
+          echo "=== GRADLE FILES ==="
+          find project -type f \( -name "gradlew" -o -name "build.gradle" -o -name "build.gradle.kts" -o -name "settings.gradle" -o -name "settings.gradle.kts" \) -print
